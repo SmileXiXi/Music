@@ -8,10 +8,10 @@ import java.util.List;
  * Created by zhao~pc on 2017/3/22.
  */
 
-public class TransferPlayerLayout extends Application{
+public class MyApplication extends Application{
     PlayerLayout playerLayout;
     List<Music> list;
-    public static TransferPlayerLayout transferPlayerLayout;
+    public static MyApplication transferPlayerLayout;
 
     @Override
     public void onCreate() {
@@ -19,7 +19,7 @@ public class TransferPlayerLayout extends Application{
         transferPlayerLayout = this;
     }
 
-    public static TransferPlayerLayout getApplication(){
+    public static MyApplication getApplication(){
         return transferPlayerLayout;
     }
 
