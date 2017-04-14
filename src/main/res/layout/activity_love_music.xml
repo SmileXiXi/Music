@@ -4,14 +4,34 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@drawable/bg_2">
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="#3f000000">
+        <ImageView
+            android:id="@+id/back"
+            android:layout_gravity="center"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/back"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="30dp"
+            android:layout_gravity="center"
+            android:text="Love Music"
+            android:textSize="20sp"
+            android:layout_marginLeft="30dp"
+            android:textColor="#FFFFFF"/>
+        <Button
+            android:id="@+id/empty"
+            android:layout_marginLeft="140dp"
+            android:layout_gravity="center"
+            android:layout_width="60dp"
+            android:layout_height="40dp"
+            android:text="清空"/>
+    </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="20dp"
-        android:layout_gravity="center"
-        android:text="Love Music"
-        android:textSize="20sp"
-        android:textColor="#FFFFFF"/>
 
     <ListView
         android:id="@+id/love_music_list_view"

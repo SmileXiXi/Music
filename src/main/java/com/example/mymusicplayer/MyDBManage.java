@@ -1,12 +1,10 @@
 package com.example.mymusicplayer;
 
-import android.content.ContentValues;
+
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
-
-import java.util.Map;
 
 /**
  * Created by zhao~pc on 2017/3/26.
@@ -22,6 +20,7 @@ public class MyDBManage {
 
     private static final String TAG = "MyDBManage";
     public void addData(String table, Music music){
+        Log.d(TAG, "addData: add" + music.getID());
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 //        ContentValues values = new ContentValues();
 //        Log.d(TAG, "addData:   name" + values.get("name"));
@@ -34,13 +33,12 @@ public class MyDBManage {
 //                +music.getArtist()+", c"+music.getData()+")";
 //        Log.d(TAG,"addData sql = " + sql);
 //        db.execSQL(sql);
-        db.execSQL("INSERT INTO "+table+" VALUES ("
-                + null + ", '"
+        String sql = "insert OR IGNORE INTO "+table+" ('name', 'artist', 'data', '_id') VALUES ('"
                 + music.getTitle() + "', '"
                 + music.getArtist() + "', '"
                 + music.getData() + "', "
-                + music.getID() + ")"
-        );
+                + music.getID() + ")";
+        db.execSQL(sql);
     }
     public void delete(String table, String name){
         SQLiteDatabase db = dbHelper.getWritableDatabase();
@@ -50,5 +48,9 @@ public class MyDBManage {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         Cursor cursor = db.query(table, null, null, null, null, null,null);
         return cursor;
+    }
+    public void removeAll(String table){
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        db.execSQL("delete from " + table);
     }
 }

@@ -3,9 +3,14 @@ package com.example.mymusicplayer;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.net.Uri;
+import android.os.Binder;
+import android.os.IBinder;
 import android.util.Log;
 import android.widget.RemoteViews;
 
@@ -18,117 +23,102 @@ public class AppWidget extends AppWidgetProvider {
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index;
-    private boolean playOrPause;
-    private int control;
-    private Intent serviceIntent = new Intent(MusicService.MEDIA_ACTION);
     private List<Music> list;
-    private int x = 0,y;
 
-    public static final String ACTION_PRE = "pre";
-    public static final String ACTION_PLAYORPAUSE = "playorpause";
-    public static final String ACTION_NEXT = "next";
-    public static final String ACTION_EXIT = "exit";
+    private RemoteViews remoteView;
+    private boolean isPlaying;
+
+    public static final String WIDGET_ACTION = "com.example.mymusicplayer.widgetaction";
     @Override
     public void onReceive(Context context, Intent intent) {
-        super.onReceive(context, intent);
-        if (intent == null){return;}
+        Intent serviceIntent = new Intent(context, MusicService.class);
+        context.startService(serviceIntent);
         String action = intent.getAction();
-        if (action.equals(ACTION_PRE)){
-            shp = context.getSharedPreferences("data", MainActivity.MODE_PRIVATE);
-            playOrPause = shp.getBoolean("playorpause", false);
-            index = shp.getInt("index", 0);
-            control = shp.getInt("control", 1);
-            if (index == 0) {
-                index = list.size() - 1;
-            } else {
-                index = index - 1;
-            }
-            serviceIntent.putExtra("index", index);
-            serviceIntent.putExtra("control", control);
-            context.sendBroadcast(serviceIntent);
-        }
-        if (action.equals(ACTION_PLAYORPAUSE)){
-            shp = context.getSharedPreferences("data", context.MODE_PRIVATE);
-            playOrPause = shp.getBoolean("playorpause", false);
-            index = shp.getInt("index", 0);
-            control = shp.getInt("control", 1);
-            y = shp.getInt("y", 0);
-            if (x == 0 && y == 0) {
-                serviceIntent.putExtra("index", index);
-                serviceIntent.putExtra("control", 1);
-                serviceIntent.putExtra("playorpause", true);
-                context.sendBroadcast(serviceIntent);
-                shp = context.getSharedPreferences("data", context.MODE_PRIVATE);
-                editor = shp.edit();
-                editor.putInt("x", 1);
-                editor.commit();
-                x = 1;
-            } else {
-                if (playOrPause) {
-                    serviceIntent.putExtra("playorpause", false);
-                    serviceIntent.putExtra("control", 2);
-                    serviceIntent.putExtra("index", index);
-                    context.sendBroadcast(serviceIntent);
-                } else {
-                    serviceIntent.putExtra("playorpause", true);
-                    serviceIntent.putExtra("control", 3);
-                    serviceIntent.putExtra("index", index);
-                    Log.d("MainActivity", "pauseOrPlay:   ");
-                    context.sendBroadcast(serviceIntent);
-                }
-            }
-        }
-        if (action.equals(ACTION_NEXT)){
-            shp = context.getSharedPreferences("data", context.MODE_PRIVATE);
-            playOrPause = shp.getBoolean("playorpause", false);
-            index = shp.getInt("index", 0);
-            control = shp.getInt("control", 1);
-            if (index == list.size() - 1) {
-                index = 0;
-            } else {
-                index = index + 1;
-            }
-            serviceIntent.putExtra("index", index);
-            serviceIntent.putExtra("control", control);
-            context.sendBroadcast(serviceIntent);
-        }
-        if (action.equals(ACTION_EXIT)){
-            ActivityCollector.finishAll();
-        }
-    }
+        Log.d("harvic", "action:"+action);
 
+        if (intent.hasCategory(Intent.CATEGORY_ALTERNATIVE)) {
+            Uri data = intent.getData();
+            int buttonId = Integer.parseInt(data.getSchemeSpecificPart());
+            switch (buttonId) {
+                case R.id.widget_player_btn_shang:
+                    pushAction(context, 1);
+                    setWidgetControl(context);
+                    break;
+                case R.id.widget_player_btn_pauseorplay:
+                    pushAction(context, 2);
+                    setWidgetControl(context);
+                    break;
+                case R.id.widget_player_btn_xia:
+                    pushAction(context, 3);
+                    setWidgetControl(context);
+                    break;
+            }
+
+        }
+        super.onReceive(context, intent);
+    }
+    private void pushAction(Context context, int ACTION) {
+        Intent actionIntent = new Intent(WIDGET_ACTION);
+        actionIntent.putExtra("actionId", ACTION);
+        context.sendBroadcast(actionIntent);
+    }
+    private static final String TAG = "AppWidget";
+    private void setWidgetControl(Context context){
+        Log.d(TAG,"remoteView = " + remoteView);
+        if (remoteView == null){
+            remoteView = new RemoteViews(context.getPackageName(),R.layout.app_widget);
+        }
+        shp = context.getSharedPreferences("data", Context.MODE_PRIVATE);
+        index = shp.getInt("index", 0);
+        isPlaying = shp.getBoolean("isPlaying", false);
+        MusicDataUtils.getAllMusic(context);
+        list = MusicDataUtils.allMusic;
+        Log.d(TAG,"remoteView = " + remoteView + " list = " + list);
+        remoteView.setTextViewText(R.id.widget_player_music_name, list.get(index).getTitle());
+        remoteView.setTextViewText(R.id.widget_player_music_artist, list.get(index).getArtist());
+        if (isPlaying){
+            remoteView.setImageViewResource(R.id.widget_player_btn_pauseorplay, R.drawable.player_btn_kai);
+        }else {
+            remoteView.setImageViewResource(R.id.widget_player_btn_pauseorplay, R.drawable.player_btn_ting);
+        }
+        ComponentName componentName = new ComponentName(context, AppWidget.class);
+        AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
+        appWidgetManager.updateAppWidget(componentName, remoteView);
+    }
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
 
         MusicDataUtils.getAllMusic(context);
         list = MusicDataUtils.allMusic;
+        pushUpdate(context, appWidgetManager);
+        setWidgetControl(context);
+        
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 0, new Intent(context, PlayActivity.class), 0);
+        remoteView.setOnClickPendingIntent(R.id.widget_layout, contentIntent);
 
-        RemoteViews remoteView = new RemoteViews(context.getPackageName(), R.layout.app_widget);
 
-        Intent preIn = new Intent(ACTION_PRE);
-        PendingIntent preIntent = PendingIntent.getBroadcast(context,
-                1, preIn, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_shang, preIntent);
-
-        Intent playOrPauseIn = new Intent(ACTION_PLAYORPAUSE);
-        PendingIntent playOrPauseIntent = PendingIntent.getBroadcast(context,
-                2, playOrPauseIn, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_pauseorplay, playOrPauseIntent);
-
-        Intent nextIn = new Intent(ACTION_NEXT);
-        PendingIntent nextIntent = PendingIntent.getBroadcast(context,
-                3, nextIn, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_xia, nextIntent);
-
-        Intent exitIn = new Intent(ACTION_EXIT);
-        PendingIntent exitIntent = PendingIntent.getBroadcast(context,
-                4, exitIn, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_exit, exitIntent);
-
-        appWidgetManager.updateAppWidget(appWidgetIds, remoteView);
+        ComponentName componentName = new ComponentName(context, AppWidget.class);
+        appWidgetManager.updateAppWidget(componentName, remoteView);
 
     }
+    public PendingIntent getPendingIntent(Context context, int buttonId){
+        Intent intent = new Intent();
+        intent.setClass(context, AppWidget.class);
+        intent.addCategory(Intent.CATEGORY_ALTERNATIVE);
+        intent.setData(Uri.parse("harvic:" + buttonId));
+        PendingIntent pi = PendingIntent.getBroadcast(context, 0, intent, 0);
+        return pi;
+    }
+    private void pushUpdate(Context context,AppWidgetManager appWidgetManager) {
 
+        remoteView = new RemoteViews(context.getPackageName(),R.layout.app_widget);
+        remoteView.setOnClickPendingIntent(R.id.widget_player_btn_shang, getPendingIntent(context, R.id.widget_player_btn_shang));
+        remoteView.setOnClickPendingIntent(R.id.widget_player_btn_pauseorplay, getPendingIntent(context, R.id.widget_player_btn_pauseorplay));
+        remoteView.setOnClickPendingIntent(R.id.widget_player_btn_xia, getPendingIntent(context, R.id.widget_player_btn_xia));
+
+        ComponentName componentName = new ComponentName(context, AppWidget.class);
+        appWidgetManager.updateAppWidget(componentName, remoteView);
+    }
     @Override
     public void onEnabled(Context context) {
         // Enter relevant functionality for when the first widget is created
@@ -136,6 +126,7 @@ public class AppWidget extends AppWidgetProvider {
 
     @Override
     public void onDisabled(Context context) {
+        Log.d(TAG, "onDisabled: ");
         // Enter relevant functionality for when the last widget is disabled
     }
 }

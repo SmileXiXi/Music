@@ -1,17 +1,22 @@
 package com.example.mymusicplayer;
 
+import android.app.AlertDialog;
 import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -40,15 +45,10 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
     private TextView textName, textArtist;
     private ImageView imagePre, imagePlayorPause, imageNext;
     private ProgressBar progressBar;
-
+    private MyReceiver myReceiver;
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index;
-    private int control;
-    private boolean playOrPause;
-
-    private MediaPlayer mediaPlayer;
-
 
     public static void actionStart(Context context){
         Intent intent = new Intent(context, AllMusicActivity.class);
@@ -57,17 +57,23 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        unregisterReceiver(myReceiver);
+        Log.d(TAG, "onDestroy:  onDestroy");
+        unbindService(connection);
         ActivityCollector.removeActivity(this);
+        super.onDestroy();
     }
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(final Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_all_music);
         ActivityCollector.addActivity(this);
 
-        MyReceiver myReceiver = new MyReceiver();
+        Intent service = new Intent(AllMusicActivity.this, MusicService.class);
+        bindService(service, connection, BIND_AUTO_CREATE);
+
+        myReceiver = new MyReceiver();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(MusicService.CHANGE_TEXT);
         registerReceiver(myReceiver,intentFilter);
@@ -81,6 +87,12 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         //listView加载歌曲数据
         playerLayout = (PlayerLayout) findViewById(R.id.player_layout_all_music);
         playerLayout.setControlCallBack(this);
+        playerLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PlayActivity.startAction(AllMusicActivity.this);
+            }
+        });
         initPlayerLayout();
         ListView listView = (ListView) findViewById(R.id.all_music_list_view);
         SimpleAdapter adapter = new SimpleAdapter(this, musicList,
@@ -88,29 +100,18 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                 new int[]{R.id.music_name, R.id.music_artist});
         listView.setAdapter(adapter);
 
-        ((TransferPlayerLayout)getApplication()).setPlayerLayout(list);
-
         //listView设置item点击事件
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                Music music = list.get(position);
-
-                textName.setText(music.getTitle());
-                textArtist.setText(music.getArtist());
-                imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
+                Log.d(TAG, "onItemClick: onItemClick");
                 shp = getSharedPreferences("data", MODE_PRIVATE);
                 editor = shp.edit();
-                editor.putBoolean("playorpause", true);
-                editor.putInt("y", 1);
+                editor.putInt("index", position);
+                editor.putBoolean("isPlaying", true);
                 editor.commit();
-                y = 1;
-
-                Intent intent= new Intent(MusicService.MEDIA_ACTION);
-                intent.putExtra("index",position);
-                intent.putExtra("playorpause", true);
-                intent.putExtra("control", 1);
-                sendBroadcast(intent);
+                myBinder.play();
+                setPlayerControl();
             }
         });
 
@@ -121,10 +122,24 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                MyDBManage myDBManage = new MyDBManage(AllMusicActivity.this, "MusicStore.db");
-                myDBManage.addData("LoveMusic", list.get(position));
-                Toast.makeText(AllMusicActivity.this, "收藏成功",Toast.LENGTH_SHORT).show();
-                return false;
+                final Music dialogMusic = list.get(position);
+                AlertDialog.Builder dialog = new AlertDialog.Builder(AllMusicActivity.this);
+                dialog.setTitle("收藏");
+                dialog.setMessage("是否收藏？");
+                dialog.setPositiveButton("是", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        MyDBManage myDBManage = new MyDBManage(AllMusicActivity.this, "MusicStore.db");
+                        myDBManage.addData("LoveMusic", dialogMusic);
+                        Toast.makeText(AllMusicActivity.this, "收藏成功",Toast.LENGTH_SHORT).show();
+                    }
+                });
+                dialog.setNegativeButton("否", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {}
+                });
+                dialog.show();
+                return true;
             }
         });
     }
@@ -147,25 +162,17 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
     @Override
     protected void onResume() {
         super.onResume();
+        setPlayerControl();
+        Log.d(TAG, "onResume: ");
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        Log.d("MainActivity", "onResume: index ="+index+";;;;;;playOrPause = " + playOrPause);
-        textName.setText(list.get(index).getTitle());
-        textArtist.setText(list.get(index).getArtist());
-        if (playOrPause){
-            imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-        }else {
-            imagePlayorPause.setImageResource(R.drawable.player_btn_ting);
-        }
-        if (mediaPlayer != null){
+        if (!shp.getBoolean("isPlaying", true)) {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    while (true) {
+                    boolean needRun = true;
+                    while (needRun) {
                         try {
-                            Thread.sleep(600);
+                            Thread.sleep(1000);
                             int max = shp.getInt("max", 0);
                             int now = shp.getInt("now", 0);
                             progressBar.setMax(max);
@@ -173,97 +180,61 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
+                        } catch (IllegalStateException e){
+                            needRun = false;
                         }
                     }
                 }
             }).start();
         }
     }
+    private MusicService.MyBinder myBinder;
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            myBinder = (MusicService.MyBinder) service;
+        }
 
-    Intent intent = new Intent(MusicService.MEDIA_ACTION);
+        @Override
+        public void onServiceDisconnected(ComponentName name) {}
+    };
     @Override
     public void next() {
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-        if (index == list.size()-1){
-            index = 0;
-        }else {
-            index = index + 1;
-        }
-        intent.putExtra("index", index);
-        intent.putExtra("control", 1);
-        textName.setText(list.get(index).getTitle());
-        textArtist.setText(list.get(index).getArtist());
-        sendBroadcast(intent);
+        myBinder.next();
+        setPlayerControl();
     }
-
     @Override
     public void pre() {
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-        if (index == 0){
-            index = list.size()-1;
-        }else {index = index - 1;}
-        intent.putExtra("index", index);
-        intent.putExtra("control", 1);
-        textName.setText(list.get(index).getTitle());
-        textArtist.setText(list.get(index).getArtist());
-        sendBroadcast(intent);
+        myBinder.pre();
+        setPlayerControl();
     }
-    int y = 0,x;
     @Override
     public void pauseOrPlay() {
+        myBinder.playOrPause();
+        setPlayerControl();
+    }
+    //设置player控件
+    boolean isPlaying;
+    private void setPlayerControl(){
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        x = shp.getInt("x", 0);
-        if (y == 0 && x == 0){
+        index = shp.getInt("index", 0);
+        isPlaying = shp.getBoolean("isPlaying", false);
+        textName.setText(list.get(index).getTitle());
+        textArtist.setText(list.get(index).getArtist());
+        if (isPlaying){
             imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-            intent.putExtra("index", index);
-            intent.putExtra("control", 1);
-            intent.putExtra("playorpause", true);
-            sendBroadcast(intent);
-            shp = getSharedPreferences("data", MODE_PRIVATE);
-            editor = shp.edit();
-            editor.putInt("y", 1);
-            editor.commit();
-            y = 1;
         }else {
-            if (playOrPause){
-                imagePlayorPause.setImageResource(R.drawable.player_btn_ting);
-                intent.putExtra("playorpause", false);
-                intent.putExtra("control", 2);
-                intent.putExtra("index", index);
-                sendBroadcast(intent);
-            }else {
-                imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-                intent.putExtra("playorpause", true);
-                intent.putExtra("control", 3);
-                intent.putExtra("index", index);
-                Log.d("MainActivity", "pauseOrPlay:   ");
-                sendBroadcast(intent);
-            }
+            imagePlayorPause.setImageResource(R.drawable.player_btn_ting);
         }
-
     }
 
     /**
      * 广播接收器
      */
-    private int count;
     private class MyReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
-            count = intent.getIntExtra("count", index);
-            textName.setText(list.get(count).getTitle());
-            textArtist.setText(list.get(count).getArtist());
+            setPlayerControl();
         }
     }
 }

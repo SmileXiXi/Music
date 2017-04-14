@@ -34,10 +34,15 @@ public class MusicDataUtils {
                             MediaStore.Audio.Media.DATA},
                     null, null, null);
             assert cursor != null;
+            String name;
             while (cursor.moveToNext()) {
+                name = cursor.getString(2);
+                if (name.contains("'")){
+                    name.replace("'","''");
+                }
                 Music temp = new Music();
                 temp.setID(cursor.getInt(0));
-                temp.setTitle(cursor.getString(2));
+                temp.setTitle(name);
                 temp.setDuration(cursor.getInt(3));
                 temp.setArtist(cursor.getString(4));
                 temp.setData(cursor.getString(10));

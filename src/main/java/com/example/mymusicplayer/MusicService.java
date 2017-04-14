@@ -12,6 +12,7 @@ import android.content.SharedPreferences;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.v7.app.NotificationCompat;
 import android.util.Log;
@@ -22,7 +23,7 @@ import java.util.List;
 
 public class MusicService extends Service{
     public static final String MEDIA_ACTION = "org.crazyit.action.MEDIA_ACTION";
-    public static final String CHANGE_TEXT ="com.example.action.CHANGE_TEXT";
+    public static final String CHANGE_TEXT = "com.example.action.CHANGE_TEXT";
     private MediaPlayer mediaPlayer;
     private List<Music> list;
 
@@ -37,8 +38,8 @@ public class MusicService extends Service{
     private Notification notification;
     private RemoteViews remoteView;
     private boolean isPlaying;
-    private Thread thread;
-    private MyReceiver receiver;
+    private MyReceiver receiverNoti, receiverWidget;
+    private Handler handler = new Handler();
     public MusicService() {}
     @Override
     public IBinder onBind(Intent intent) {
@@ -52,27 +53,12 @@ public class MusicService extends Service{
         initNotification();
         mediaPlayer = new MediaPlayer();
 
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        Thread.sleep(600);
-                        now = mediaPlayer.getCurrentPosition();
-                        max = mediaPlayer.getDuration();
-                        shp = getSharedPreferences("data", MODE_PRIVATE);
-                        editor = shp.edit();
-                        editor.putInt("now", now);
-                        editor.putInt("max", max);
-                        editor.commit();
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
+        receiverWidget = new MyReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(AppWidget.WIDGET_ACTION);
+        registerReceiver(receiverWidget, intentFilter);
     }
+
     //初始化notification
     public void initNotification(){
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, PlayActivity.class), 0);
@@ -112,8 +98,8 @@ public class MusicService extends Service{
         remoteView.setImageViewResource(R.id.noti_player_btn_pauseorplay, R.drawable.player_btn_ting);
         manager.notify(1, notification);
         IntentFilter filter = new IntentFilter(MainActivity.class.getSimpleName());
-        receiver = new MyReceiver();
-        registerReceiver(receiver, filter);
+        receiverNoti = new MyReceiver();
+        registerReceiver(receiverNoti, filter);
     }
 
     public static final String BUTTON_ACTION = "com.example.mymusicplayer.Action";
@@ -136,7 +122,8 @@ public class MusicService extends Service{
     @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy:  onDestroy");
-        unregisterReceiver(receiver);
+        unregisterReceiver(receiverNoti);
+        unregisterReceiver(receiverWidget);
         manager.cancel(1);
         shp = getSharedPreferences("data", MODE_PRIVATE);
         editor = shp.edit();
@@ -173,9 +160,31 @@ public class MusicService extends Service{
             index = shp.getInt("index",0);
             MyDBManage myDBManage = new MyDBManage(MusicService.this, "MusicStore.db");
             myDBManage.addData("RecentMusic", list.get(index));
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             e.printStackTrace();
         }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                boolean needRun = true;
+                while (needRun) {
+                    try {
+                        Thread.sleep(1000);
+                        now = mediaPlayer.getCurrentPosition();
+                        max = mediaPlayer.getDuration();
+                        shp = getSharedPreferences("data", MODE_PRIVATE);
+                        editor = shp.edit();
+                        editor.putInt("now", now);
+                        editor.putInt("max", max);
+                        editor.commit();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (IllegalStateException e){
+                        needRun = false;
+                    }
+                }
+            }
+        }).start();
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mp) {
@@ -185,11 +194,17 @@ public class MusicService extends Service{
                 editor = shp.edit();
                 editor.putInt("index", index);
                 editor.commit();
-                playMusic(list.get(index).getData());
-                setNotiControl();
-                Log.d(TAG, "onCompletion: onCompletion  index = " + index);
-                Intent intent = new Intent(CHANGE_TEXT);
-                sendBroadcast(intent);
+
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        playMusic(list.get(index).getData());
+                        setNotiControl();
+                        Log.d(TAG, "onCompletion: onCompletion  index = " + index);
+                        sendBroadcast(serviceIntent);
+                    }
+                },50);
+
             }
         });
     }
@@ -199,7 +214,6 @@ public class MusicService extends Service{
      */
     private MyBinder  myBinder= new MyBinder();
     public class MyBinder extends Binder{
-        //播放进度，并保存到shp
         public void pre(){
             shp = getSharedPreferences("data",MODE_PRIVATE);
             index = shp.getInt("index",0);
@@ -216,9 +230,22 @@ public class MusicService extends Service{
             editor.commit();
             setNotiControl();
         }
+
+        public int getCurrentPosition(){
+
+            if (mediaPlayer == null) return 0;
+            return mediaPlayer.getCurrentPosition();
+        }
+
+        public int getDuration(){
+            if (mediaPlayer == null) return 0;
+            return mediaPlayer.getDuration();
+        }
         public void next(){
+
             shp = getSharedPreferences("data",MODE_PRIVATE);
             index = shp.getInt("index",0);
+
             if (index == list.size() - 1){
                 playMusic(list.get(0).getData());
                 index = 0;
@@ -275,22 +302,48 @@ public class MusicService extends Service{
             stopService(stopIntent);
         }
     }
+
+    private Intent serviceIntent = new Intent(CHANGE_TEXT);
     private class MyReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals(AppWidget.WIDGET_ACTION)){
+               int actionId = intent.getIntExtra("actionId", 0);
+                switch (actionId){
+                    case 1:
+                        myBinder.pre();
+                        break;
+                    case 2:
+                        myBinder.playOrPause();
+                        break;
+                    case 3:
+                        myBinder.next();
+                        break;
+                    default:
+                        break;
+                }
+            }
             setNotiControl();
             switch (intent.getIntExtra(BUTTON_ACTION, 0)){
                 case 1:
                     myBinder.pre();
                     setNotiControl();
+                    sendBroadcast(serviceIntent);
                     break;
                 case 2:
                     myBinder.playOrPause();
                     setNotiControl();
+                    sendBroadcast(serviceIntent);
                     break;
                 case 3:
-                    myBinder.next();
-                    setNotiControl();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            myBinder.next();
+                            setNotiControl();
+                            sendBroadcast(serviceIntent);
+                        }
+                    },50);
                     break;
                 case 4:
                     Log.d(TAG, "onReceive: onReceive");
@@ -299,6 +352,7 @@ public class MusicService extends Service{
                     ActivityCollector.finishAll();
                     break;
                 default:
+                    break;
             }
         }
     }

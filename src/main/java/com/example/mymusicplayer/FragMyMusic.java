@@ -31,6 +31,9 @@ public class FragMyMusic extends Fragment implements View.OnClickListener{
 
         relativeLayout2 = (RelativeLayout) view.findViewById(R.id.my_love_layout);
         relativeLayout2.setOnClickListener(this);
+
+        relativeLayout4 = (RelativeLayout) view.findViewById(R.id.comment_layout);
+        relativeLayout4.setOnClickListener(this);
     }
 
     private static final String TAG = "FragMyMusic";
@@ -59,7 +62,8 @@ public class FragMyMusic extends Fragment implements View.OnClickListener{
             case R.id.my_love_layout:
                 LoveMusicActivity.actionStart(getContext());
                 break;
-
+            case R.id.comment_layout:
+                break;
         }
     }
 }

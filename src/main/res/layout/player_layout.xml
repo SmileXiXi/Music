@@ -3,12 +3,13 @@
     android:id="@+id/player_layout"
     android:layout_width="match_parent"
     android:layout_height="60dp"
+    android:background="#3f000000"
     android:orientation="horizontal">
     <ImageView
         android:id="@+id/player_icon"
         android:layout_width="60dp"
         android:layout_height="60dp"
-        android:src="@drawable/player_icon"/>
+        android:src="@drawable/player_icon2"/>
     <RelativeLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -29,6 +30,7 @@
                 android:id="@+id/player_music_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:lines="1"
                 android:text="This is the name of music"/>
             <TextView
                 android:id="@+id/player_music_artist"

@@ -11,16 +11,16 @@ import java.util.List;
 public class MyApplication extends Application{
     PlayerLayout playerLayout;
     List<Music> list;
-    public static MyApplication transferPlayerLayout;
+    public static MyApplication myApplication;
 
     @Override
     public void onCreate() {
         super.onCreate();
-        transferPlayerLayout = this;
+        myApplication = this;
     }
 
     public static MyApplication getApplication(){
-        return transferPlayerLayout;
+        return myApplication;
     }
 
     public void setPlayerLayout(PlayerLayout playerLayout, List<Music> list){

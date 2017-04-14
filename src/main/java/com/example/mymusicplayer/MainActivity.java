@@ -1,37 +1,30 @@
 package com.example.mymusicplayer;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.graphics.BitmapFactory;
-import android.provider.MediaStore;
+import android.os.IBinder;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
-import android.support.v7.app.NotificationCompat;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
-import android.widget.RelativeLayout;
-import android.widget.RemoteViews;
 import android.widget.TextView;
-
-
+import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.logging.SocketHandler;
+
 
 public class MainActivity extends FragmentActivity implements PlayerLayout.ControlCallBack{
     private ViewPager viewPager;
@@ -47,29 +40,60 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index;
-    private boolean playOrPause;
-    private int control;
 
-    private NotificationManager manager;
-    private Notification notification;
-    private RemoteViews remoteView;
-
+    private MyReceiver myReceiver;
     private PlayerLayout playerLayout;
     public static void startAction(Context context){
         Intent intent = new Intent(context, MainActivity.class);
         context.startActivity(intent);
     }
+
+    private long exitTime = 0;
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            exit();
+            return false;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    public void exit() {
+        if ((System.currentTimeMillis() - exitTime) > 2000) {
+            Toast.makeText(getApplicationContext(), "再次点击退出应用",
+                    Toast.LENGTH_SHORT).show();
+            exitTime = System.currentTimeMillis();
+        } else {
+            ActivityCollector.finishAll();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        Log.d(TAG, "onStop: ");
+        super.onStop();
+    }
+    @Override
+    protected void onPause() {
+        Log.d(TAG, "onPause: ");
+        super.onPause();
+    }
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        unregisterReceiver(myReceiver);
+        Log.d(TAG, "onDestroy:  onDestroy");
+        unbindService(connection);
         shp = getSharedPreferences("data", MODE_PRIVATE);
         editor = shp.edit();
-        editor.putInt("x", 0);
-        editor.putInt("y", 0);
-        editor.putBoolean("playorpause", false);
+        editor.putBoolean("isPlaying", false);
+        editor.putBoolean("isFirstClick", true);
         editor.commit();
-        Log.d(TAG, "onDestroy:   onDestroy");
-        ActivityCollector.removeActivity(this);
+        myBinder.pause();
+        myBinder.cancelNoti();
+        myBinder.stopMusicService(MainActivity.this);
+        ActivityCollector.finishAll();
+        //android.os.Process.killProcess(android.os.Process.myPid());
+        super.onDestroy();
     }
     private static final String TAG = "MainActivity";
     @Override
@@ -77,8 +101,11 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ActivityCollector.addActivity(this);
+        Log.d(TAG, "onCreate: ");
+        Intent service = new Intent(MainActivity.this, MusicService.class);
+        bindService(service, connection, BIND_AUTO_CREATE);
 
-        MyReceiver myReceiver = new MyReceiver();
+        myReceiver = new MyReceiver();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(MusicService.CHANGE_TEXT);
         registerReceiver(myReceiver,intentFilter);
@@ -100,73 +127,19 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         viewPager.addOnPageChangeListener(new MyOnPageChangeListener());
 
         playerLayout = (PlayerLayout) findViewById(R.id.player_layout_main_activity);
+        playerLayout.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PlayActivity.startAction(MainActivity.this);
+            }
+        });
         initPlayerLayout();
-
-        initNotification();
 
         playerLayout.setControlCallBack(this);
         //开启服务 播放音乐
         Intent serviceIntent = new Intent(MainActivity.this, MusicService.class);
         startService(serviceIntent);
 
-    }
-
-    //初始化notification
-    public void initNotification(){
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), 0);
-        remoteView = new RemoteViews(this.getPackageName(), R.layout.notification_layout);
-        manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        notification = new NotificationCompat.Builder(this)
-                .setCustomContentView(remoteView)
-                .setSmallIcon(R.drawable.icon)
-                .setContentIntent(contentIntent)
-                .setLargeIcon(BitmapFactory.decodeResource(getResources(),
-                        R.drawable.icon))
-                .build();
-        manager.notify(1, notification);
-
-        Intent notiIntent = new Intent(MainActivity.class.getSimpleName());
-        notiIntent.putExtra(BUTTON_ACTION, 1);
-        PendingIntent preIntent = PendingIntent.getBroadcast(MainActivity.this,
-                1, notiIntent, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_shang, preIntent);
-
-        notiIntent.putExtra(BUTTON_ACTION, 2);
-        PendingIntent playOrPauseIntent = PendingIntent.getBroadcast(MainActivity.this,
-                2, notiIntent, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_pauseorplay, playOrPauseIntent);
-
-        notiIntent.putExtra(BUTTON_ACTION, 3);
-        PendingIntent nextIntent = PendingIntent.getBroadcast(MainActivity.this,
-                3, notiIntent, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_player_btn_xia, nextIntent);
-
-        notiIntent.putExtra(BUTTON_ACTION, 4);
-        PendingIntent exitIntent = PendingIntent.getBroadcast(MainActivity.this,
-                4, notiIntent, 0);
-        remoteView.setOnClickPendingIntent(R.id.noti_exit, exitIntent);
-
-        setNotiControl();
-        remoteView.setImageViewResource(R.id.noti_player_btn_pauseorplay, R.drawable.player_btn_ting);
-        manager.notify(1, notification);
-        IntentFilter filter = new IntentFilter(MainActivity.class.getSimpleName());
-        MyReceiver receiver = new MyReceiver();
-        registerReceiver(receiver, filter);
-    }
-    public static final String BUTTON_ACTION = "com.example.mymusicplayer.Action";
-    //设置notification中控件
-    public void setNotiControl(){
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        index = shp.getInt("inde5x", 0);
-        playOrPause = shp.getBoolean("playorpause", false);
-        remoteView.setTextViewText(R.id.noti_player_music_name, list.get(index).getTitle());
-        remoteView.setTextViewText(R.id.noti_player_music_artist, list.get(index).getArtist());
-        if (playOrPause){
-            remoteView.setImageViewResource(R.id.noti_player_btn_pauseorplay, R.drawable.player_btn_ting);
-        }else {
-            remoteView.setImageViewResource(R.id.noti_player_btn_pauseorplay, R.drawable.player_btn_kai);
-        }
-        manager.notify(1, notification);
     }
     //PlayerLayout内部控件 初始化
     public void initPlayerLayout(){
@@ -215,115 +188,78 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         textView2.setOnClickListener(new MyOnClickListener(1));
         textView3.setOnClickListener(new MyOnClickListener(2));
     }
-
+private boolean x;
     @Override
     protected void onResume() {
-        super.onResume();
+        Log.d(TAG, "onResume: ");
+        setPlayerControl();
 
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        Log.d("MainActivity", "onResume: index ="+index+";;;;;;playOrPause = " + playOrPause);
+        if (!shp.getBoolean("isPlaying", true)){
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    boolean needRun = true;
+                    while (needRun) {
+                        try {
+                            Thread.sleep(1000);
+                            int now = shp.getInt("now", 0);
+                            int max = shp.getInt("max", 0);
+                            progressBar.setMax(max);
+                            progressBar.setProgress(now);
+
+                        } catch (InterruptedException e) {
+                            // TODO Auto-generated catch block
+                            e.printStackTrace();
+                        } catch (IllegalStateException e){
+                            needRun = false;
+                        }
+                    }
+                }
+            }).start();
+        }
+        super.onResume();
+    }
+
+    private MusicService.MyBinder myBinder;
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            myBinder = (MusicService.MyBinder) service;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {}
+    };
+    @Override
+    public void next() {
+        myBinder.next();
+        setPlayerControl();
+    }
+    @Override
+    public void pre() {
+        myBinder.pre();
+        setPlayerControl();
+    }
+    @Override
+    public void pauseOrPlay() {
+        myBinder.playOrPause();
+        setPlayerControl();
+    }
+    //点击后，设置player控件
+    boolean isPlaying;
+    private void setPlayerControl(){
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        index = shp.getInt("index", 0);
+        isPlaying = shp.getBoolean("isPlaying", false);
         textName.setText(list.get(index).getTitle());
         textArtist.setText(list.get(index).getArtist());
-        if (playOrPause){
+        if (isPlaying){
             imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
         }else {
             imagePlayorPause.setImageResource(R.drawable.player_btn_ting);
         }
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                while (true) {
-                    try {
-                        Thread.sleep(600);
-                        int max = shp.getInt("max", 0);
-                        int now = shp.getInt("now", 0);
-                        progressBar.setMax(max);
-                        progressBar.setProgress(now);
-                    } catch (InterruptedException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }).start();
     }
-
-    Intent serviceIntent = new Intent(MusicService.MEDIA_ACTION);
-    @Override
-    public void next() {
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-        if (index == list.size()-1){
-            index = 0;
-        }else {
-            index = index + 1;
-        }
-        serviceIntent.putExtra("index", index);
-        serviceIntent.putExtra("control", control);
-        textName.setText(list.get(index).getTitle());
-        textArtist.setText(list.get(index).getArtist());
-        sendBroadcast(serviceIntent);
-    }
-    @Override
-    public void pre() {
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-        if (index == 0){
-            index = list.size()-1;
-        }else {index = index - 1;}
-        serviceIntent.putExtra("index", index);
-        serviceIntent.putExtra("control", control);
-        textName.setText(list.get(index).getTitle());
-        textArtist.setText(list.get(index).getArtist());
-        sendBroadcast(serviceIntent);
-    }
-    int x = 0, y;
-    @Override
-    public void pauseOrPlay() {
-        shp = getSharedPreferences("data", MODE_PRIVATE);
-        playOrPause = shp.getBoolean("playorpause", false);
-        index = shp.getInt("index",0);
-        control = shp.getInt("control",1);
-        y = shp.getInt("y", 0);
-        if (x == 0 && y==0){
-            imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-            serviceIntent.putExtra("index", index);
-            serviceIntent.putExtra("control", 1);
-            serviceIntent.putExtra("playorpause", true);
-            sendBroadcast(serviceIntent);
-            shp = getSharedPreferences("data", MODE_PRIVATE);
-            editor = shp.edit();
-            editor.putInt("x", 1);
-            editor.commit();
-            x = 1;
-        }else {
-            if (playOrPause){
-                imagePlayorPause.setImageResource(R.drawable.player_btn_ting);
-                serviceIntent.putExtra("playorpause", false);
-                serviceIntent.putExtra("control", 2);
-                serviceIntent.putExtra("index", index);
-                sendBroadcast(serviceIntent);
-            }else {
-                imagePlayorPause.setImageResource(R.drawable.player_btn_kai);
-                serviceIntent.putExtra("playorpause", true);
-                serviceIntent.putExtra("control", 3);
-                serviceIntent.putExtra("index", index);
-                Log.d("MainActivity", "pauseOrPlay:   ");
-                sendBroadcast(serviceIntent);
-            }
-        }
-    }
-
     /**
      * ViewPage 切换页面监听类 Title标题颜色变化
      */
@@ -365,101 +301,25 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
      * Title 监听类
      */
     private class MyOnClickListener implements View.OnClickListener {
-        private int index = 0;
+        private int titleIndex;
 
         public MyOnClickListener(int i) {
-            index = i;
+            titleIndex = i;
         }
 
         public void onClick(View v) {
-            viewPager.setCurrentItem(index);
-            setTitleSelectedColor(index);
+            viewPager.setCurrentItem(titleIndex);
+            setTitleSelectedColor(titleIndex);
         }
     }
     /**
      * 广播接收器
      */
-    private int count;
+
     private class MyReceiver extends BroadcastReceiver{
         @Override
         public void onReceive(Context context, Intent intent) {
-            setNotiControl();
-            if (intent.getAction().equals(MainActivity.class.getSimpleName())){
-                switch (intent.getIntExtra(BUTTON_ACTION, 0)){
-                    case 1:
-                        shp = getSharedPreferences("data", MODE_PRIVATE);
-                        playOrPause = shp.getBoolean("playorpause", false);
-                        index = shp.getInt("index",0);
-                        control = shp.getInt("control",1);
-                        if (index == 0){
-                            index = list.size()-1;
-                        }else {index = index - 1;}
-                        serviceIntent.putExtra("index", index);
-                        serviceIntent.putExtra("control", control);
-                        setNotiControl();
-                        sendBroadcast(serviceIntent);
-                        break;
-                    case 2:
-                        shp = getSharedPreferences("data", MODE_PRIVATE);
-                        playOrPause = shp.getBoolean("playorpause", false);
-                        index = shp.getInt("index",0);
-                        control = shp.getInt("control",1);
-                        y = shp.getInt("y", 0);
-                        if (x == 0 && y==0){
-                            setNotiControl();
-                            serviceIntent.putExtra("index", index);
-                            serviceIntent.putExtra("control", 1);
-                            serviceIntent.putExtra("playorpause", true);
-                            sendBroadcast(serviceIntent);
-                            shp = getSharedPreferences("data", MODE_PRIVATE);
-                            editor = shp.edit();
-                            editor.putInt("x", 1);
-                            editor.commit();
-                            x = 1;
-                        }else {
-                            if (playOrPause){
-                                setNotiControl();
-                                serviceIntent.putExtra("playorpause", false);
-                                serviceIntent.putExtra("control", 2);
-                                serviceIntent.putExtra("index", index);
-                                sendBroadcast(serviceIntent);
-                            }else {
-                                setNotiControl();
-                                serviceIntent.putExtra("playorpause", true);
-                                serviceIntent.putExtra("control", 3);
-                                serviceIntent.putExtra("index", index);
-                                Log.d("MainActivity", "pauseOrPlay:   ");
-                                sendBroadcast(serviceIntent);
-                            }
-                        }
-                        break;
-                    case 3:
-                        shp = getSharedPreferences("data", MODE_PRIVATE);
-                        playOrPause = shp.getBoolean("playorpause", false);
-                        index = shp.getInt("index",0);
-                        control = shp.getInt("control",1);
-                        if (index == list.size()-1){
-                            index = 0;
-                        }else {
-                            index = index + 1;
-                        }
-                        serviceIntent.putExtra("index", index);
-                        serviceIntent.putExtra("control", control);
-                        setNotiControl();
-                        sendBroadcast(serviceIntent);
-                        break;
-                    case 4:
-                        ActivityCollector.finishAll();
-                        manager.cancel(1);
-                        break;
-                    default:
-                }
-            }else {
-                count = intent.getIntExtra("count", index);
-                textName.setText(list.get(count).getTitle());
-                textArtist.setText(list.get(count).getArtist());
-            }
-
+            setPlayerControl();
         }
     }
 }

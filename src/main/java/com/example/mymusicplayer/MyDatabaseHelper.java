@@ -12,17 +12,17 @@ import android.util.Log;
 public class MyDatabaseHelper extends SQLiteOpenHelper {
     
     public static final String CREATE_RECENT_MUSIC = "create table RecentMusic("
-            + "id integer primary key autoincrement,"
+            + "id integer,"
             + "name text,"
             + "artist text,"
             + "data text,"
-            + "_id integer)";
+            + "_id integer primary key)";
     public static final String CREATE_LOVE_MUSIC = "create table LoveMusic("
-            + "id integer primary key autoincrement,"
+            + "id integer,"
             + "name text,"
             + "artist text,"
             + "data text,"
-            + "_id integer)";
+            + "_id integer primary key)";
     public MyDatabaseHelper(Context context, String name, SQLiteDatabase.CursorFactory factory, int version) {
         super(context, name, factory, version);
     }
