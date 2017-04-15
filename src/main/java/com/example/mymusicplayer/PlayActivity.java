@@ -15,6 +15,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,7 +24,7 @@ import java.util.List;
 public class PlayActivity extends Activity implements View.OnClickListener{
     private TextView textName, textArtist;
     private ImageView imagePre, imagePlayorPause, imageNext, back, collext;
-    private ProgressBar progressBar;
+    private SeekBar seekBar;
     private SharedPreferences shp;
     private int index;
     private boolean isPlaying;
@@ -45,10 +46,22 @@ public class PlayActivity extends Activity implements View.OnClickListener{
         MusicDataUtils.getAllMusic(PlayActivity.this);
         list = MusicDataUtils.allMusic;
         initControl();
+        setSeek();
         setPlayerControl();
         setControlClickListener();
     }
-
+    public void setSeek(){
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {}
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                myBinder.setSeekTo(seekBar.getProgress());
+            }
+        });
+    }
     @Override
     protected void onDestroy() {
         unbindService(connection);
@@ -60,7 +73,7 @@ public class PlayActivity extends Activity implements View.OnClickListener{
     protected void onResume() {
         setPlayerControl();
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        if (!shp.getBoolean("isPlaying", true)) {
+
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -70,8 +83,8 @@ public class PlayActivity extends Activity implements View.OnClickListener{
                             Thread.sleep(1000);
                             int max = shp.getInt("max", 0);
                             int now = shp.getInt("now", 0);
-                            progressBar.setMax(max);
-                            progressBar.setProgress(now);
+                            seekBar.setMax(max);
+                            seekBar.setProgress(now);
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -81,7 +94,7 @@ public class PlayActivity extends Activity implements View.OnClickListener{
                     }
                 }
             }).start();
-        }
+
         super.onResume();
     }
 
@@ -96,7 +109,7 @@ public class PlayActivity extends Activity implements View.OnClickListener{
         imagePre = (ImageView) findViewById(R.id.play_pre);
         imagePlayorPause = (ImageView) findViewById(R.id.play_playorpause);
         imageNext = (ImageView) findViewById(R.id.play_next);
-        progressBar = (ProgressBar) findViewById(R.id.progress_bar);
+        seekBar = (SeekBar) findViewById(R.id.progress_bar);
     }
     private void setPlayerControl(){
         Log.d(TAG, "setPlayerControl: ");

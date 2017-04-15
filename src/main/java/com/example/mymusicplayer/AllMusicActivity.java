@@ -29,6 +29,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RemoteViews;
+import android.widget.SeekBar;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,7 +45,7 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
     private List<Music> list;
     private TextView textName, textArtist;
     private ImageView imagePre, imagePlayorPause, imageNext;
-    private ProgressBar progressBar;
+    private SeekBar seekBar;
     private MyReceiver myReceiver;
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
@@ -94,6 +95,7 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
             }
         });
         initPlayerLayout();
+        setSeek();
         ListView listView = (ListView) findViewById(R.id.all_music_list_view);
         SimpleAdapter adapter = new SimpleAdapter(this, musicList,
                 R.layout.all_music_list_item, new String[]{"name", "artist"},
@@ -143,14 +145,26 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
             }
         });
     }
+    public void setSeek(){
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {}
 
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
 
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                myBinder.setSeekTo(seekBar.getProgress());
+            }
+        });
+    }
 
     //PlayerLayout内部控件 初始化
     public void initPlayerLayout(){
         textName = (TextView) playerLayout.findViewById(R.id.player_music_name);
         textArtist = (TextView) playerLayout.findViewById(R.id.player_music_artist);
-        progressBar = (ProgressBar) playerLayout.findViewById(R.id.progress_bar);
+        seekBar = (SeekBar) playerLayout.findViewById(R.id.progress_bar);
         imagePre = (ImageView) playerLayout.findViewById(R.id.player_btn_shang);
         imagePlayorPause = (ImageView) playerLayout.findViewById(R.id.player_btn_pauseorplay);
         imageNext = (ImageView) playerLayout.findViewById(R.id.player_btn_xia);
@@ -165,7 +179,7 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         setPlayerControl();
         Log.d(TAG, "onResume: ");
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        if (!shp.getBoolean("isPlaying", true)) {
+
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -175,8 +189,8 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                             Thread.sleep(1000);
                             int max = shp.getInt("max", 0);
                             int now = shp.getInt("now", 0);
-                            progressBar.setMax(max);
-                            progressBar.setProgress(now);
+                            seekBar.setMax(max);
+                            seekBar.setProgress(now);
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -186,7 +200,7 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                     }
                 }
             }).start();
-        }
+        
     }
     private MusicService.MyBinder myBinder;
     private ServiceConnection connection = new ServiceConnection() {

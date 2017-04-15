@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.util.List;
 
 public class MusicService extends Service{
-    public static final String MEDIA_ACTION = "org.crazyit.action.MEDIA_ACTION";
     public static final String CHANGE_TEXT = "com.example.action.CHANGE_TEXT";
     private MediaPlayer mediaPlayer;
     private List<Music> list;
@@ -124,13 +123,14 @@ public class MusicService extends Service{
         Log.d(TAG, "onDestroy:  onDestroy");
         unregisterReceiver(receiverNoti);
         unregisterReceiver(receiverWidget);
+
         manager.cancel(1);
         shp = getSharedPreferences("data", MODE_PRIVATE);
         editor = shp.edit();
         editor.putBoolean("isPlaying", false);
         editor.putBoolean("isFirstClick", true);
         editor.commit();
-
+        myBinder.pushAction();
         mediaPlayer.stop();
         mediaPlayer.release();
         myBinder.stopMusicService(MusicService.this);
@@ -143,6 +143,7 @@ public class MusicService extends Service{
     }
 
     boolean isFirstClick;
+    public static final String CHANGE_WIDGET = "com.example.action.CHANGE_WIDGET";
     /**
      * playMusic方法，用于MediaPlayer初始化，并开始播放。
      */
@@ -214,7 +215,14 @@ public class MusicService extends Service{
      */
     private MyBinder  myBinder= new MyBinder();
     public class MyBinder extends Binder{
+        private void pushAction() {
+            Intent actionIntent = new Intent(CHANGE_WIDGET);
+            sendBroadcast(actionIntent);}
+        public void setSeekTo(int position){
+            mediaPlayer.seekTo(position);
+        }
         public void pre(){
+            Log.d(TAG, "pre: pre");
             shp = getSharedPreferences("data",MODE_PRIVATE);
             index = shp.getInt("index",0);
             if (index == 0 ){
@@ -228,6 +236,7 @@ public class MusicService extends Service{
             editor.putInt("index", index);
             editor.putBoolean("isPlaying", true);
             editor.commit();
+            pushAction();
             setNotiControl();
         }
 
@@ -257,6 +266,7 @@ public class MusicService extends Service{
             editor.putInt("index", index);
             editor.putBoolean("isPlaying", true);
             editor.commit();
+            pushAction();
             setNotiControl();
         }
         private static final String TAG = "MyBinder";
@@ -292,6 +302,7 @@ public class MusicService extends Service{
             editor.putBoolean("isFirstClick", false);
             editor.putBoolean("isPlaying", mediaPlayer.isPlaying());
             editor.commit();
+            pushAction();
         }
         public void cancelNoti(){
             Log.d(TAG, "cancelNoti: ");

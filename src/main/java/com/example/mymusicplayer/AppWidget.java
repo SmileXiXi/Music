@@ -10,6 +10,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Binder;
+import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.RemoteViews;
@@ -21,7 +22,7 @@ import java.util.List;
  */
 public class AppWidget extends AppWidgetProvider {
     private SharedPreferences shp;
-    private SharedPreferences.Editor editor;
+
     private int index;
     private List<Music> list;
 
@@ -30,7 +31,7 @@ public class AppWidget extends AppWidgetProvider {
 
     public static final String WIDGET_ACTION = "com.example.mymusicplayer.widgetaction";
     @Override
-    public void onReceive(Context context, Intent intent) {
+    public void onReceive(final Context context, Intent intent) {
         Intent serviceIntent = new Intent(context, MusicService.class);
         context.startService(serviceIntent);
         String action = intent.getAction();
@@ -42,18 +43,31 @@ public class AppWidget extends AppWidgetProvider {
             switch (buttonId) {
                 case R.id.widget_player_btn_shang:
                     pushAction(context, 1);
-                    setWidgetControl(context);
+                    new Handler().postDelayed(new Runnable(){
+                        public void run() {
+                            setWidgetControl(context);
+                        }
+                    }, 100);
                     break;
                 case R.id.widget_player_btn_pauseorplay:
                     pushAction(context, 2);
-                    setWidgetControl(context);
+                    new Handler().postDelayed(new Runnable(){
+                        public void run() {
+                            setWidgetControl(context);
+                        }
+                    }, 100);
                     break;
                 case R.id.widget_player_btn_xia:
                     pushAction(context, 3);
-                    setWidgetControl(context);
+                    new Handler().postDelayed(new Runnable(){
+                        public void run() {
+                            setWidgetControl(context);
+                        }
+                    }, 100);
                     break;
             }
-
+        } else if (intent.getAction().equals(MusicService.CHANGE_WIDGET)){
+            setWidgetControl(context);
         }
         super.onReceive(context, intent);
     }
@@ -64,23 +78,30 @@ public class AppWidget extends AppWidgetProvider {
     }
     private static final String TAG = "AppWidget";
     private void setWidgetControl(Context context){
-        Log.d(TAG,"remoteView = " + remoteView);
+        Log.d(TAG, "setWidgetControl: setWidgetControl");
+        Log.d(TAG, "setWidgetControl: pre");
         if (remoteView == null){
             remoteView = new RemoteViews(context.getPackageName(),R.layout.app_widget);
         }
         shp = context.getSharedPreferences("data", Context.MODE_PRIVATE);
         index = shp.getInt("index", 0);
+        Log.d(TAG, "setWidgetControl: index = " + index);
         isPlaying = shp.getBoolean("isPlaying", false);
         MusicDataUtils.getAllMusic(context);
         list = MusicDataUtils.allMusic;
         Log.d(TAG,"remoteView = " + remoteView + " list = " + list);
         remoteView.setTextViewText(R.id.widget_player_music_name, list.get(index).getTitle());
         remoteView.setTextViewText(R.id.widget_player_music_artist, list.get(index).getArtist());
+
         if (isPlaying){
             remoteView.setImageViewResource(R.id.widget_player_btn_pauseorplay, R.drawable.player_btn_kai);
         }else {
             remoteView.setImageViewResource(R.id.widget_player_btn_pauseorplay, R.drawable.player_btn_ting);
         }
+        updateWidget(context);
+    }
+    public void updateWidget(Context context){
+        Log.d(TAG, "updateWidget: updateWidget");
         ComponentName componentName = new ComponentName(context, AppWidget.class);
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         appWidgetManager.updateAppWidget(componentName, remoteView);
@@ -93,7 +114,7 @@ public class AppWidget extends AppWidgetProvider {
         pushUpdate(context, appWidgetManager);
         setWidgetControl(context);
         
-        PendingIntent contentIntent = PendingIntent.getActivity(context, 0, new Intent(context, PlayActivity.class), 0);
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class), 0);
         remoteView.setOnClickPendingIntent(R.id.widget_layout, contentIntent);
 
 

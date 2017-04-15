@@ -20,6 +20,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
@@ -36,7 +37,7 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
     private List<Music> list;
     private TextView textName, textArtist;
     private ImageView imagePre, imagePlayorPause, imageNext;
-    private ProgressBar progressBar;
+    private SeekBar seekBar;
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index;
@@ -87,6 +88,7 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         editor = shp.edit();
         editor.putBoolean("isPlaying", false);
         editor.putBoolean("isFirstClick", true);
+        editor.putInt("now", 0);
         editor.commit();
         myBinder.pause();
         myBinder.cancelNoti();
@@ -134,18 +136,36 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
             }
         });
         initPlayerLayout();
-
+        setSeek();
         playerLayout.setControlCallBack(this);
         //开启服务 播放音乐
         Intent serviceIntent = new Intent(MainActivity.this, MusicService.class);
         startService(serviceIntent);
 
     }
+    public void setSeek(){
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                myBinder.setSeekTo(seekBar.getProgress());
+            }
+        });
+    }
     //PlayerLayout内部控件 初始化
     public void initPlayerLayout(){
         textName = (TextView) playerLayout.findViewById(R.id.player_music_name);
         textArtist = (TextView) playerLayout.findViewById(R.id.player_music_artist);
-        progressBar = (ProgressBar) playerLayout.findViewById(R.id.progress_bar);
+        seekBar = (SeekBar) playerLayout.findViewById(R.id.progress_bar);
         imagePre = (ImageView) playerLayout.findViewById(R.id.player_btn_shang);
         imagePlayorPause = (ImageView) playerLayout.findViewById(R.id.player_btn_pauseorplay);
         imageNext = (ImageView) playerLayout.findViewById(R.id.player_btn_xia);
@@ -188,7 +208,6 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         textView2.setOnClickListener(new MyOnClickListener(1));
         textView3.setOnClickListener(new MyOnClickListener(2));
     }
-private boolean x;
     @Override
     protected void onResume() {
         Log.d(TAG, "onResume: ");
@@ -205,8 +224,8 @@ private boolean x;
                             Thread.sleep(1000);
                             int now = shp.getInt("now", 0);
                             int max = shp.getInt("max", 0);
-                            progressBar.setMax(max);
-                            progressBar.setProgress(now);
+                            seekBar.setMax(max);
+                            seekBar.setProgress(now);
 
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
