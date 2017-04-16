@@ -25,6 +25,33 @@ public class PlayerLayout extends LinearLayout implements View.OnClickListener{
     public ControlCallBack controlCallBack;
     public AllMusicActivity activity;
 
+    public static String timeFormat(int time){
+        int hour = 0;
+        int minute = 0;
+        int second = 0;
+        String timeStr = null;
+        if (time <= 0){return "00:00";}
+        else {
+            minute = time / 60000;
+            if (minute < 60){
+                second = time / 1000 - minute * 60;
+                timeStr = placeNumber(minute) + ":" + placeNumber(second);
+            }else {
+                hour = minute / 60000;
+                if (hour > 99){return  "99:59:59";}
+                minute = minute % 60000;
+                second = time / 1000 - hour * 3600 -  minute * 60;
+                timeStr = placeNumber(hour) + ":" + placeNumber(minute) + ":" + placeNumber(second);
+            }
+        }
+        return timeStr;
+    }
+    public static String placeNumber(int i){
+        if (i < 10){
+            return "0"+ i ;
+        }
+        return "" + i ;
+    }
 
     public interface ControlCallBack{
         void next();

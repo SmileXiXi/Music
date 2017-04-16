@@ -16,7 +16,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -43,13 +45,13 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
     private PlayerLayout playerLayout;
     private List<Map<String, String>> musicList;
     private List<Music> list;
-    private TextView textName, textArtist;
+    private TextView textName, textArtist, progressTime, maxTime;
     private ImageView imagePre, imagePlayorPause, imageNext;
     private SeekBar seekBar;
     private MyReceiver myReceiver;
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
-    private int index;
+    private int index, max, now;
 
     public static void actionStart(Context context){
         Intent intent = new Intent(context, AllMusicActivity.class);
@@ -168,6 +170,8 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         imagePre = (ImageView) playerLayout.findViewById(R.id.player_btn_shang);
         imagePlayorPause = (ImageView) playerLayout.findViewById(R.id.player_btn_pauseorplay);
         imageNext = (ImageView) playerLayout.findViewById(R.id.player_btn_xia);
+        progressTime = (TextView) playerLayout.findViewById(R.id.progress_time);
+        maxTime = (TextView) playerLayout.findViewById(R.id.max_time);
     }
 
     private static final String TAG = "AllMusicActivity";
@@ -187,10 +191,11 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                     while (needRun) {
                         try {
                             Thread.sleep(1000);
-                            int max = shp.getInt("max", 0);
-                            int now = shp.getInt("now", 0);
-                            seekBar.setMax(max);
-                            seekBar.setProgress(now);
+                            max = shp.getInt("max", 0);
+                            now = shp.getInt("now", 0);
+                            Message message = new Message();
+                            message.what = UPDATE_TIME;
+                            handler.sendMessage(message);
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -200,8 +205,27 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                     }
                 }
             }).start();
-        
+
     }
+    //handler 更新时间；
+    public static final int UPDATE_TIME = 1;
+    private Handler handler = new Handler(){
+        public void handleMessage(Message msg){
+            switch (msg.what){
+                case UPDATE_TIME:
+                    Log.d(TAG, "handleMessage: handleMessage");
+                    seekBar.setMax(max);
+                    seekBar.setProgress(now);
+                    progressTime.setText(PlayerLayout.timeFormat(now));
+                    maxTime.setText(PlayerLayout.timeFormat(max));
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
+
+
     private MusicService.MyBinder myBinder;
     private ServiceConnection connection = new ServiceConnection() {
         @Override

@@ -208,6 +208,12 @@ public class MusicService extends Service{
 
             }
         });
+        mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {// 错误处理事件
+            @Override public boolean onError(MediaPlayer player, int arg1, int arg2) {
+                mediaPlayer.reset();
+                return false;
+            }
+        });
     }
 
     /**

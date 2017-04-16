@@ -9,7 +9,9 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -22,11 +24,11 @@ import android.widget.Toast;
 import java.util.List;
 
 public class PlayActivity extends Activity implements View.OnClickListener{
-    private TextView textName, textArtist;
+    private TextView textName, textArtist, progressTime, maxTime;
     private ImageView imagePre, imagePlayorPause, imageNext, back, collext;
     private SeekBar seekBar;
     private SharedPreferences shp;
-    private int index;
+    private int index, max, now;
     private boolean isPlaying;
     private List<Music> list;
 
@@ -81,10 +83,11 @@ public class PlayActivity extends Activity implements View.OnClickListener{
                     while (needRun) {
                         try {
                             Thread.sleep(1000);
-                            int max = shp.getInt("max", 0);
-                            int now = shp.getInt("now", 0);
-                            seekBar.setMax(max);
-                            seekBar.setProgress(now);
+                            max = shp.getInt("max", 0);
+                            now = shp.getInt("now", 0);
+                            Message message = new Message();
+                            message.what = UPDATE_TIME;
+                            handler.sendMessage(message);
                         } catch (InterruptedException e) {
                             // TODO Auto-generated catch block
                             e.printStackTrace();
@@ -97,6 +100,23 @@ public class PlayActivity extends Activity implements View.OnClickListener{
 
         super.onResume();
     }
+    //handler 更新时间；
+    public static final int UPDATE_TIME = 1;
+    private Handler handler = new Handler(){
+        public void handleMessage(Message msg){
+            switch (msg.what){
+                case UPDATE_TIME:
+                    Log.d(TAG, "handleMessage: handleMessage");
+                    seekBar.setMax(max);
+                    seekBar.setProgress(now);
+                    progressTime.setText(PlayerLayout.timeFormat(now));
+                    maxTime.setText(PlayerLayout.timeFormat(max));
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 
     private static final String TAG = "PlayActivity";
     //初始化控件
@@ -110,6 +130,8 @@ public class PlayActivity extends Activity implements View.OnClickListener{
         imagePlayorPause = (ImageView) findViewById(R.id.play_playorpause);
         imageNext = (ImageView) findViewById(R.id.play_next);
         seekBar = (SeekBar) findViewById(R.id.progress_bar);
+        progressTime = (TextView) findViewById(R.id.progress_time);
+        maxTime = (TextView) findViewById(R.id.max_time);
     }
     private void setPlayerControl(){
         Log.d(TAG, "setPlayerControl: ");
