@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.database;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;

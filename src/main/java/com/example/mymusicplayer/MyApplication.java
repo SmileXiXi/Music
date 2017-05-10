@@ -2,6 +2,8 @@ package com.example.mymusicplayer;
 
 import android.app.Application;
 
+import com.example.mymusicplayer.localmusic.Music;
+
 import java.util.List;
 
 /**

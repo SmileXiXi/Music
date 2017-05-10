@@ -6,14 +6,15 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import android.os.Binder;
 import android.os.Handler;
-import android.os.IBinder;
 import android.util.Log;
 import android.widget.RemoteViews;
+
+import com.example.mymusicplayer.activity.MainActivity;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
 
 import java.util.List;
 
@@ -32,8 +33,6 @@ public class AppWidget extends AppWidgetProvider {
     public static final String WIDGET_ACTION = "com.example.mymusicplayer.widgetaction";
     @Override
     public void onReceive(final Context context, Intent intent) {
-        Intent serviceIntent = new Intent(context, MusicService.class);
-        context.startService(serviceIntent);
         String action = intent.getAction();
         Log.d("harvic", "action:"+action);
 
@@ -113,11 +112,9 @@ public class AppWidget extends AppWidgetProvider {
         list = MusicDataUtils.allMusic;
         pushUpdate(context, appWidgetManager);
         setWidgetControl(context);
-        
+
         PendingIntent contentIntent = PendingIntent.getActivity(context, 0, new Intent(context, MainActivity.class), 0);
         remoteView.setOnClickPendingIntent(R.id.widget_layout, contentIntent);
-
-
         ComponentName componentName = new ComponentName(context, AppWidget.class);
         appWidgetManager.updateAppWidget(componentName, remoteView);
 

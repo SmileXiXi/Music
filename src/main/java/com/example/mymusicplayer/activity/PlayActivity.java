@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.activity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -14,12 +14,18 @@ import android.os.IBinder;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.mymusicplayer.ActivityCollector;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
+import com.example.mymusicplayer.MusicService;
+import com.example.mymusicplayer.database.MyDBManage;
+import com.example.mymusicplayer.PlayerLayout;
+import com.example.mymusicplayer.R;
 
 import java.util.List;
 
@@ -31,7 +37,9 @@ public class PlayActivity extends Activity implements View.OnClickListener{
     private int index, max, now;
     private boolean isPlaying;
     private List<Music> list;
-
+    private MusicService.MyBinder myBinder;
+    private static final String TAG = "PlayActivity";
+    public static final int UPDATE_TIME = 1;
     public static void startAction(Context context) {
         Intent intent = new Intent(context, PlayActivity.class);
         context.startActivity(intent);
@@ -67,19 +75,23 @@ public class PlayActivity extends Activity implements View.OnClickListener{
     @Override
     protected void onDestroy() {
         unbindService(connection);
-        ActivityCollector.removeActivity(this);
+
         super.onDestroy();
+        ActivityCollector.removeActivity(this);
     }
-
-    @Override
-    protected void onResume() {
-        setPlayerControl();
+    private boolean getBoolean(){
+        if (myBinder == null){return false;}
+        else {return myBinder.isMusicPlaying();}
+    }
+    private void openThread(Boolean bool){
+        Log.d(TAG, "openThread: openThread" + getBoolean());
         shp = getSharedPreferences("data", MODE_PRIVATE);
-
+        if (bool){
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     boolean needRun = true;
+                    Log.d(TAG, "run: run");
                     while (needRun) {
                         try {
                             Thread.sleep(1000);
@@ -97,16 +109,19 @@ public class PlayActivity extends Activity implements View.OnClickListener{
                     }
                 }
             }).start();
-
+        }
+    }
+    @Override
+    protected void onResume() {
+        setPlayerControl();
+        openThread(true);
         super.onResume();
     }
     //handler 更新时间；
-    public static final int UPDATE_TIME = 1;
     private Handler handler = new Handler(){
         public void handleMessage(Message msg){
             switch (msg.what){
                 case UPDATE_TIME:
-                    Log.d(TAG, "handleMessage: handleMessage");
                     seekBar.setMax(max);
                     seekBar.setProgress(now);
                     progressTime.setText(PlayerLayout.timeFormat(now));
@@ -118,7 +133,6 @@ public class PlayActivity extends Activity implements View.OnClickListener{
         }
     };
 
-    private static final String TAG = "PlayActivity";
     //初始化控件
     public void initControl(){
         Log.d(TAG, "initControl: ");
@@ -154,7 +168,7 @@ public class PlayActivity extends Activity implements View.OnClickListener{
         imagePlayorPause.setOnClickListener(this);
         imageNext.setOnClickListener(this);
     }
-    private MusicService.MyBinder myBinder;
+
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -194,14 +208,20 @@ public class PlayActivity extends Activity implements View.OnClickListener{
             case R.id.play_pre:
                 myBinder.pre();
                 setPlayerControl();
+                shp = getSharedPreferences("data", MODE_PRIVATE);
+                if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
                 break;
             case R.id.play_playorpause:
+                shp = getSharedPreferences("data", MODE_PRIVATE);
+                if (shp.getBoolean("isFirstClick", true)){openThread(!getBoolean());}
                 myBinder.playOrPause();
                 setPlayerControl();
                 break;
             case R.id.play_next:
                 myBinder.next();
                 setPlayerControl();
+                shp = getSharedPreferences("data", MODE_PRIVATE);
+                if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
         }
     }
 }

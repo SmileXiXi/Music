@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.activity;
 
 import android.app.AlertDialog;
 import android.content.ComponentName;
@@ -9,9 +9,9 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.IBinder;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
@@ -19,6 +19,13 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.Toast;
+
+import com.example.mymusicplayer.ActivityCollector;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
+import com.example.mymusicplayer.MusicService;
+import com.example.mymusicplayer.database.MyDBManage;
+import com.example.mymusicplayer.R;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +44,9 @@ public class LoveMusicActivity extends AppCompatActivity {
     private ImageView backImage;
     private Button emptyButton;
 
+    private static final String TAG = "LoveMusicActivity";
+    private MusicService.MyBinder myBinder;
+
     public static void actionStart(Context context){
         Intent intent = new Intent(context, LoveMusicActivity.class);
         context.startActivity(intent);}
@@ -45,7 +55,8 @@ public class LoveMusicActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_love_music);
         ActivityCollector.addActivity(this);
-
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.hide();
         setLoveTitle();
 
         MusicDataUtils.getAllMusic(LoveMusicActivity.this);
@@ -163,7 +174,7 @@ public class LoveMusicActivity extends AppCompatActivity {
             }
         });
     }
-    private MusicService.MyBinder myBinder;
+
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -173,18 +184,17 @@ public class LoveMusicActivity extends AppCompatActivity {
         @Override
         public void onServiceDisconnected(ComponentName name) {}
     };
-    private static final String TAG = "LoveMusicActivity";
+
 
     @Override
     protected void onStop() {
         super.onStop();
-
     }
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
         unbindService(connection);
+        super.onDestroy();
         ActivityCollector.removeActivity(this);
     }
 }

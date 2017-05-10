@@ -48,14 +48,16 @@
             android:layout_alignParentLeft="true">
             <TextView
                 android:id="@+id/player_music_name"
-                android:layout_width="wrap_content"
+                android:layout_width="230dp"
                 android:layout_height="wrap_content"
                 android:lines="1"
+                android:textColor="#ffff"
                 android:text="This is the name of music"/>
             <TextView
                 android:id="@+id/player_music_artist"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:textColor="#ffff"
                 android:text="Singer"/>
         </LinearLayout>
         <LinearLayout

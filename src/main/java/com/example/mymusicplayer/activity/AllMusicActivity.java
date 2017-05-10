@@ -1,9 +1,6 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.activity;
 
 import android.app.AlertDialog;
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -12,47 +9,49 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.BitmapFactory;
-import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
-import android.provider.MediaStore;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.ProgressBar;
-import android.widget.RemoteViews;
 import android.widget.SeekBar;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import com.example.mymusicplayer.ActivityCollector;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
+import com.example.mymusicplayer.MusicService;
+import com.example.mymusicplayer.database.MyDBManage;
+import com.example.mymusicplayer.PlayerLayout;
+import com.example.mymusicplayer.R;
+
 import java.util.List;
 import java.util.Map;
 
-public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.ControlCallBack{
+public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.ControlCallBack {
     private PlayerLayout playerLayout;
     private List<Map<String, String>> musicList;
     private List<Music> list;
     private TextView textName, textArtist, progressTime, maxTime;
-    private ImageView imagePre, imagePlayorPause, imageNext;
+    private ImageView imagePre, imagePlayorPause, imageNext, backImage;
     private SeekBar seekBar;
     private MyReceiver myReceiver;
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index, max, now;
-
+    private MusicService.MyBinder myBinder;
+    private static final String TAG = "AllMusicActivity";
+    public static final int UPDATE_TIME = 1;
+    boolean isPlaying;
     public static void actionStart(Context context){
         Intent intent = new Intent(context, AllMusicActivity.class);
         context.startActivity(intent);
@@ -97,6 +96,12 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
             }
         });
         initPlayerLayout();
+        backImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
         setSeek();
         ListView listView = (ListView) findViewById(R.id.all_music_list_view);
         SimpleAdapter adapter = new SimpleAdapter(this, musicList,
@@ -119,9 +124,6 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
             }
         });
 
-        //开启服务 播放音乐
-        Intent serviceIntent = new Intent(AllMusicActivity.this, MusicService.class);
-        startService(serviceIntent);
 
         listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
@@ -172,22 +174,21 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         imageNext = (ImageView) playerLayout.findViewById(R.id.player_btn_xia);
         progressTime = (TextView) playerLayout.findViewById(R.id.progress_time);
         maxTime = (TextView) playerLayout.findViewById(R.id.max_time);
+        backImage = (ImageView) findViewById(R.id.back);
     }
-
-    private static final String TAG = "AllMusicActivity";
-
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        setPlayerControl();
-        Log.d(TAG, "onResume: ");
+    private boolean getBoolean(){
+        if (myBinder == null){return false;}
+        else {return myBinder.isMusicPlaying();}
+    }
+    private void openThread(Boolean bool){
+        Log.d(TAG, "openThread: openThread" + getBoolean());
         shp = getSharedPreferences("data", MODE_PRIVATE);
-
+        if (bool){
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     boolean needRun = true;
+                    Log.d(TAG, "run: run");
                     while (needRun) {
                         try {
                             Thread.sleep(1000);
@@ -205,15 +206,19 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
                     }
                 }
             }).start();
-
+        }
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        setPlayerControl();
+        openThread(getBoolean());
     }
     //handler 更新时间；
-    public static final int UPDATE_TIME = 1;
     private Handler handler = new Handler(){
         public void handleMessage(Message msg){
             switch (msg.what){
                 case UPDATE_TIME:
-                    Log.d(TAG, "handleMessage: handleMessage");
                     seekBar.setMax(max);
                     seekBar.setProgress(now);
                     progressTime.setText(PlayerLayout.timeFormat(now));
@@ -225,8 +230,6 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
         }
     };
 
-
-    private MusicService.MyBinder myBinder;
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -240,19 +243,25 @@ public class AllMusicActivity extends AppCompatActivity implements PlayerLayout.
     public void next() {
         myBinder.next();
         setPlayerControl();
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
     }
     @Override
     public void pre() {
         myBinder.pre();
         setPlayerControl();
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
     }
     @Override
     public void pauseOrPlay() {
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(!getBoolean());}
         myBinder.playOrPause();
         setPlayerControl();
     }
     //设置player控件
-    boolean isPlaying;
+
     private void setPlayerControl(){
         shp = getSharedPreferences("data", MODE_PRIVATE);
         index = shp.getInt("index", 0);

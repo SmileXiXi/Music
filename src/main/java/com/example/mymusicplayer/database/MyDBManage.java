@@ -1,10 +1,12 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.database;
 
 
 import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
+
+import com.example.mymusicplayer.localmusic.Music;
 
 /**
  * Created by zhao~pc on 2017/3/26.

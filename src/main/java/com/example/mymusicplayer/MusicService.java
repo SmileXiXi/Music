@@ -18,6 +18,12 @@ import android.support.v7.app.NotificationCompat;
 import android.util.Log;
 import android.widget.RemoteViews;
 
+import com.example.mymusicplayer.activity.MainActivity;
+import com.example.mymusicplayer.activity.PlayActivity;
+import com.example.mymusicplayer.database.MyDBManage;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -46,7 +52,9 @@ public class MusicService extends Service{
     }
     @Override
     public void onCreate() {
-        super.onCreate();
+        Log.d(TAG, "onCreate: onCreate");
+        Exception e = new Exception(TAG);
+        e.printStackTrace();
         MusicDataUtils.getAllMusic(MusicService.this);
         list = MusicDataUtils.allMusic;
         initNotification();
@@ -56,10 +64,12 @@ public class MusicService extends Service{
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(AppWidget.WIDGET_ACTION);
         registerReceiver(receiverWidget, intentFilter);
+        super.onCreate();
     }
 
     //初始化notification
     public void initNotification(){
+        Log.d(TAG, "initNotification: initNotification");
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, PlayActivity.class), 0);
         remoteView = new RemoteViews(this.getPackageName(), R.layout.notification_layout);
         manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
@@ -119,12 +129,16 @@ public class MusicService extends Service{
 
     private static final String TAG = "MusicService";
     @Override
+    public boolean onUnbind(Intent intent) {
+        Log.d(TAG,"onUnbind");
+        return super.onUnbind(intent);
+    }
+
+    @Override
     public void onDestroy() {
         Log.d(TAG, "onDestroy:  onDestroy");
         unregisterReceiver(receiverNoti);
         unregisterReceiver(receiverWidget);
-
-        manager.cancel(1);
         shp = getSharedPreferences("data", MODE_PRIVATE);
         editor = shp.edit();
         editor.putBoolean("isPlaying", false);
@@ -133,7 +147,7 @@ public class MusicService extends Service{
         myBinder.pushAction();
         mediaPlayer.stop();
         mediaPlayer.release();
-        myBinder.stopMusicService(MusicService.this);
+        manager.cancel(1);
         super.onDestroy();
     }
 
@@ -195,7 +209,6 @@ public class MusicService extends Service{
                 editor = shp.edit();
                 editor.putInt("index", index);
                 editor.commit();
-
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
@@ -205,7 +218,6 @@ public class MusicService extends Service{
                         sendBroadcast(serviceIntent);
                     }
                 },50);
-
             }
         });
         mediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {// 错误处理事件
@@ -245,22 +257,9 @@ public class MusicService extends Service{
             pushAction();
             setNotiControl();
         }
-
-        public int getCurrentPosition(){
-
-            if (mediaPlayer == null) return 0;
-            return mediaPlayer.getCurrentPosition();
-        }
-
-        public int getDuration(){
-            if (mediaPlayer == null) return 0;
-            return mediaPlayer.getDuration();
-        }
         public void next(){
-
             shp = getSharedPreferences("data",MODE_PRIVATE);
             index = shp.getInt("index",0);
-
             if (index == list.size() - 1){
                 playMusic(list.get(0).getData());
                 index = 0;
@@ -285,7 +284,6 @@ public class MusicService extends Service{
         }
         public void pause(){
             Log.d(TAG, "pause: ");
-            setNotiControl();
             remoteView.setImageViewResource(R.id.noti_player_btn_pauseorplay, R.drawable.player_btn_ting);
             manager.notify(1, notification);
             mediaPlayer.pause();
@@ -313,10 +311,9 @@ public class MusicService extends Service{
         public void cancelNoti(){
             Log.d(TAG, "cancelNoti: ");
             manager.cancel(1);}
-        public void stopMusicService(Context context){
-            Log.d(TAG, "stopMusicService: ");
-            Intent stopIntent = new Intent(context, MusicService.class);
-            stopService(stopIntent);
+        public boolean isMusicPlaying(){
+            if (mediaPlayer == null){return false;}
+            return mediaPlayer.isPlaying();
         }
     }
 
@@ -340,7 +337,7 @@ public class MusicService extends Service{
                         break;
                 }
             }
-            setNotiControl();
+            //setNotiControl();
             switch (intent.getIntExtra(BUTTON_ACTION, 0)){
                 case 1:
                     myBinder.pre();
@@ -364,8 +361,7 @@ public class MusicService extends Service{
                     break;
                 case 4:
                     Log.d(TAG, "onReceive: onReceive");
-                    manager.cancel(1);
-                    myBinder.stopMusicService(context);
+                    myBinder.cancelNoti();
                     ActivityCollector.finishAll();
                     break;
                 default:

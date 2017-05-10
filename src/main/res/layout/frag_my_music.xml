@@ -5,118 +5,108 @@
     android:layout_height="match_parent">
     <ImageView
         android:id="@+id/login_image"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
         android:layout_gravity="center"
-        android:padding="5dp"
+        android:layout_marginTop="20dp"
         android:src="@drawable/login_image"/>
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:layout_marginLeft="40dp"
-        android:layout_marginRight="40dp"
-        android:layout_marginTop="20dp">
-        <RelativeLayout
-            android:onClick="onClick"
-            android:clickable="true"
-            android:id="@+id/all_music_layout"
-            android:layout_width="130dp"
-            android:layout_height="130dp"
-            android:background="#3f000000"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentStart="true">
-            <ImageView
-                android:id="@+id/all_music_image"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_centerInParent="true"
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="30dp"
+        android:layout_gravity="center">
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+            <ImageButton
+                android:id="@+id/bt_allmusic"
+                android:layout_width="145dp"
+                android:layout_height="120dp"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:background="#3f000000"
                 android:src="@drawable/all_music_image"/>
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:layout_marginBottom="10dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerInParent="true"
-                android:text="All Music"
-                android:textColor="#ffff"/>
-        </RelativeLayout>
-        <RelativeLayout
-            android:id="@+id/my_love_layout"
-            android:layout_width="130dp"
-            android:layout_height="130dp"
-            android:background="#3f000000"
-            android:onClick="onClick"
-            android:clickable="true"
-            android:layout_alignParentRight="true">
-            <ImageView
-                android:id="@+id/my_love_image"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_centerInParent="true"
-                android:src="@drawable/my_love_image"/>
+                android:id="@+id/allmusic"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center|bottom"
+                android:text="All  Music"
+                android:textSize="15sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="italic"/>
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+            <ImageButton
+                android:id="@+id/bt_mylove"
+                android:layout_width="145dp"
+                android:layout_height="120dp"
+                android:src="@drawable/my_love_image"
+                android:layout_marginRight="10dp"
+                android:background="#3f000000" />
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:layout_marginBottom="10dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerInParent="true"
+                android:id="@+id/mylove"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center|bottom"
                 android:text="My Love"
-                android:textColor="#ffff"/>
-        </RelativeLayout>
-        <RelativeLayout
-            android:onClick="onClick"
-            android:clickable="true"
-            android:id="@+id/recent_music_layout"
-            android:layout_width="130dp"
-            android:layout_height="130dp"
-            android:background="#3f000000"
-            android:layout_marginTop="15dp"
-            android:layout_below="@+id/all_music_layout">
-            <ImageView
-                android:id="@+id/recent_music_image"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_centerInParent="true"
+                android:textSize="15sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="italic"/>
+        </FrameLayout>
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_gravity="center" >
+
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+            <ImageButton
+                android:id="@+id/bt_recentmusic"
+                android:layout_width="145dp"
+                android:layout_height="120dp"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:background="#3f000000"
                 android:src="@drawable/recent_music_image"/>
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:layout_marginBottom="10dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerInParent="true"
-                android:text="Recent Music"
-                android:textColor="#ffff"/>
-        </RelativeLayout>
-        <RelativeLayout
-            android:onClick="onClick"
-            android:clickable="true"
-            android:id="@+id/comment_layout"
-            android:layout_width="130dp"
-            android:layout_height="130dp"
-            android:background="#3f000000"
-            android:layout_marginTop="15dp"
-            android:layout_alignParentRight="true"
-            android:layout_below="@+id/my_love_layout">
-            <ImageView
-                android:id="@+id/comment_image"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_centerInParent="true"
-                android:src="@drawable/comment_image"/>
+                android:id="@+id/recentmusic"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center|bottom"
+                android:text="Recent  Music"
+                android:textSize="15sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="italic"/>
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" >
+            <ImageButton
+                android:id="@+id/bt_comment"
+                android:layout_width="145dp"
+                android:layout_height="120dp"
+                android:src="@drawable/comment_image"
+                android:layout_marginRight="10dp"
+                android:background="#3f000000" />
             <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:layout_marginBottom="10dp"
-                android:layout_alignParentBottom="true"
-                android:layout_centerInParent="true"
+                android:id="@+id/comment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center|bottom"
                 android:text="Comment"
-                android:textColor="#ffff"/>
-        </RelativeLayout>
-    </RelativeLayout>
+                android:textSize="15sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="italic" />
+        </FrameLayout>
+    </LinearLayout>
 
 </LinearLayout>

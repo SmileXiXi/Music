@@ -2,17 +2,14 @@ package com.example.mymusicplayer;
 
 import android.content.Context;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import com.example.mymusicplayer.activity.AllMusicActivity;
+import com.example.mymusicplayer.localmusic.Music;
 
 /**
  * Created by zhao~pc on 2017/3/19.

@@ -11,23 +11,23 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".Welcome">
+        <activity android:name=".activity.Welcome">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".MainActivity" />
-        <activity android:name=".AllMusicActivity" />
+        <activity android:name=".activity.MainActivity" />
+        <activity android:name=".activity.AllMusicActivity" />
 
         <service
             android:name=".MusicService"
             android:enabled="true"
             android:exported="true" />
 
-        <activity android:name=".RecentMusicActivity" />
-        <activity android:name=".LoveMusicActivity" />
+        <activity android:name=".activity.RecentMusicActivity" />
+        <activity android:name=".activity.LoveMusicActivity" />
 
         <receiver android:name=".AppWidget">
             <intent-filter>
@@ -40,7 +40,7 @@
                 android:resource="@xml/app_widget_info" />
         </receiver>
 
-        <activity android:name=".PlayActivity"></activity>
+        <activity android:name=".activity.PlayActivity"></activity>
     </application>
 
 </manifest>

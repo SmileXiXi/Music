@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.activity;
 
 import android.content.SharedPreferences;
 import android.os.Handler;
@@ -6,6 +6,9 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+
+import com.example.mymusicplayer.ActivityCollector;
+import com.example.mymusicplayer.R;
 
 public class Welcome extends AppCompatActivity {
 

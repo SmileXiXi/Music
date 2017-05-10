@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.activity;
 
 
 import android.content.BroadcastReceiver;
@@ -21,19 +21,30 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.mymusicplayer.ActivityCollector;
+import com.example.mymusicplayer.fragment.MusicOnlineFragment;
+import com.example.mymusicplayer.fragment.FragMyMusic;
+import com.example.mymusicplayer.fragment.SettingFragment;
+import com.example.mymusicplayer.localmusic.Music;
+import com.example.mymusicplayer.localmusic.MusicDataUtils;
+import com.example.mymusicplayer.MusicService;
+import com.example.mymusicplayer.PlayerLayout;
+import com.example.mymusicplayer.R;
+
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class MainActivity extends FragmentActivity implements PlayerLayout.ControlCallBack{
+public class MainActivity extends FragmentActivity implements PlayerLayout.ControlCallBack {
     private ViewPager viewPager;
     private FragMyMusic fragMyMusic;
-    private FragMusicOnline fragMusicOnline;
-    private FragSetting fragSetting;
+    private MusicOnlineFragment fragMusicOnline;
+    private SettingFragment fragSetting;
+
     private ArrayList<Fragment> fragmentList;
     private TextView textView1, textView2, textView3, progressTime, maxTime;
     private List<Music> list;
@@ -43,14 +54,18 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
     private SharedPreferences shp;
     private SharedPreferences.Editor editor;
     private int index, max, now;
-
+    private boolean isDestory = false;
+    boolean isPlaying;
     private MyReceiver myReceiver;
     private PlayerLayout playerLayout;
+    private static final String TAG = "MainActivity";
+    public static final int UPDATE_TIME = 1;
+    private MusicService.MyBinder myBinder;
+
     public static void startAction(Context context){
         Intent intent = new Intent(context, MainActivity.class);
         context.startActivity(intent);
     }
-
     private long exitTime = 0;
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
@@ -85,7 +100,8 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
     protected void onDestroy() {
         unregisterReceiver(myReceiver);
         Log.d(TAG, "onDestroy:  onDestroy");
-        unbindService(connection);
+        isDestory = true;
+
         shp = getSharedPreferences("data", MODE_PRIVATE);
         editor = shp.edit();
         editor.putBoolean("isPlaying", false);
@@ -94,18 +110,19 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         editor.commit();
         myBinder.pause();
         myBinder.cancelNoti();
-        myBinder.stopMusicService(MainActivity.this);
-        ActivityCollector.finishAll();
+        unbindService(connection);
         //android.os.Process.killProcess(android.os.Process.myPid());
         super.onDestroy();
+        ActivityCollector.finishAll();
     }
-    private static final String TAG = "MainActivity";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ActivityCollector.addActivity(this);
-        Log.d(TAG, "onCreate: ");
+        Log.d(TAG, "onCreate: myBinder" + myBinder);
+        isDestory = false;
         Intent service = new Intent(MainActivity.this, MusicService.class);
         bindService(service, connection, BIND_AUTO_CREATE);
 
@@ -119,8 +136,8 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
 
         viewPager = (ViewPager) findViewById(R.id.view_pager);
         fragMyMusic = new FragMyMusic();
-        fragMusicOnline = new FragMusicOnline();
-        fragSetting = new FragSetting();
+        fragMusicOnline = new MusicOnlineFragment();
+        fragSetting = new SettingFragment();
         fragmentList = new ArrayList<>();
         fragmentList.add(fragMyMusic);
         fragmentList.add(fragMusicOnline);
@@ -140,10 +157,6 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         initPlayerLayout();
         setSeek();
         playerLayout.setControlCallBack(this);
-        //开启服务 播放音乐
-        Intent serviceIntent = new Intent(MainActivity.this, MusicService.class);
-        startService(serviceIntent);
-
     }
     public void setSeek(){
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -153,10 +166,7 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
             }
 
             @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
+            public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 myBinder.setSeekTo(seekBar.getProgress());
@@ -207,28 +217,29 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         textView1 = (TextView) findViewById(R.id.text1);
         textView2 = (TextView) findViewById(R.id.text2);
         textView3 = (TextView) findViewById(R.id.text3);
-
+        Log.d(TAG, "initTextView: initTextView");
         textView1.setOnClickListener(new MyOnClickListener(0));
         textView2.setOnClickListener(new MyOnClickListener(1));
         textView3.setOnClickListener(new MyOnClickListener(2));
     }
-    @Override
-    protected void onResume() {
-        Log.d(TAG, "onResume: ");
-        setPlayerControl();
-
+    private boolean getBoolean(){
+        if (myBinder == null){return false;}
+        else {return myBinder.isMusicPlaying();}
+    }
+    private void openThread(Boolean bool){
+        Log.d(TAG, "openThread: openThread" + getBoolean());
         shp = getSharedPreferences("data", MODE_PRIVATE);
-        if (!shp.getBoolean("isPlaying", true)){
+        if (bool){
             new Thread(new Runnable() {
                 @Override
                 public void run() {
                     boolean needRun = true;
-
+                    Log.d(TAG, "run: run");
                     while (needRun) {
                         try {
                             Thread.sleep(1000);
-                            now = shp.getInt("now", 0);
                             max = shp.getInt("max", 0);
+                            now = shp.getInt("now", 0);
                             Message message = new Message();
                             message.what = UPDATE_TIME;
                             handler.sendMessage(message);
@@ -242,15 +253,21 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
                 }
             }).start();
         }
+    }
+    @Override
+    protected void onResume() {
+        Log.d(TAG, "onResume: ");
+        setPlayerControl();
+        openThread(getBoolean());
+
         super.onResume();
     }
     //handler 更新时间；
-    public static final int UPDATE_TIME = 1;
     private Handler handler = new Handler(){
         public void handleMessage(Message msg){
            switch (msg.what){
                case UPDATE_TIME:
-                   Log.d(TAG, "handleMessage: handleMessage");
+                   //Log.d(TAG,"UPDATE_TIME");
                    seekBar.setMax(max);
                    seekBar.setProgress(now);
                    progressTime.setText(PlayerLayout.timeFormat(now));
@@ -262,8 +279,6 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
         }
     };
 
-
-    private MusicService.MyBinder myBinder;
     private ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -277,19 +292,25 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
     public void next() {
         myBinder.next();
         setPlayerControl();
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
+
     }
     @Override
     public void pre() {
         myBinder.pre();
         setPlayerControl();
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(getBoolean());}
     }
     @Override
     public void pauseOrPlay() {
+        shp = getSharedPreferences("data", MODE_PRIVATE);
+        if (shp.getBoolean("isFirstClick", true)){openThread(!getBoolean());}
         myBinder.playOrPause();
         setPlayerControl();
     }
     //点击后，设置player控件
-    boolean isPlaying;
     private void setPlayerControl(){
         shp = getSharedPreferences("data", MODE_PRIVATE);
         index = shp.getInt("index", 0);
@@ -343,13 +364,14 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
      * Title 监听类
      */
     private class MyOnClickListener implements View.OnClickListener {
-        private int titleIndex;
-
+        private int titleIndex = 0;
         public MyOnClickListener(int i) {
             titleIndex = i;
+            Log.d(TAG, "MyOnClickListener: titleIndex = " + titleIndex);
         }
-
+        @Override
         public void onClick(View v) {
+            Log.d(TAG, "onClick: titleIndex = " + titleIndex);
             viewPager.setCurrentItem(titleIndex);
             setTitleSelectedColor(titleIndex);
         }
@@ -364,4 +386,5 @@ public class MainActivity extends FragmentActivity implements PlayerLayout.Contr
             setPlayerControl();
         }
     }
+
 }

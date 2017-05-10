@@ -1,4 +1,4 @@
-package com.example.mymusicplayer;
+package com.example.mymusicplayer.localmusic;
 
 import android.content.Context;
 import android.database.Cursor;
@@ -38,7 +38,7 @@ public class MusicDataUtils {
             while (cursor.moveToNext()) {
                 name = cursor.getString(2);
                 if (name.contains("'")){
-                    name.replace("'","''");
+                    name.replace("'","\'");
                 }
                 Music temp = new Music();
                 temp.setID(cursor.getInt(0));

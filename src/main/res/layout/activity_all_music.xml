@@ -3,26 +3,41 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@drawable/bg_2">
+    android:background="@drawable/bg_1">
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="#3f000000">
+        <ImageView
+            android:id="@+id/back"
+            android:layout_gravity="center"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/back"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:gravity="center"
+            android:layout_gravity="center"
+            android:text="All Music"
+            android:textSize="20sp"
+            android:background="#3f000000"
+            android:textColor="#FFFFFF"/>
+    </LinearLayout>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="30dp"
-        android:layout_gravity="center"
-        android:text="All Music"
-        android:textSize="20sp"
-        android:textColor="#FFFFFF"/>
 
     <ListView
         android:id="@+id/all_music_list_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:layout_marginLeft="5dp"/>
 
 
     <com.example.mymusicplayer.PlayerLayout
         android:id="@+id/player_layout_all_music"
         android:layout_width="match_parent"
-        android:layout_height="60dp"/>
+        android:layout_height="65dp"/>
 
 </LinearLayout>

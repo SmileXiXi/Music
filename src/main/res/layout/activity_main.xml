@@ -19,7 +19,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="My Music"
-            android:textSize="15dp"
+            android:textSize="20dp"
             android:textColor="#6495ED" />
         <TextView
             android:id="@+id/text2"
@@ -29,7 +29,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="Music Online"
-            android:textSize="15dp"
+            android:textSize="20dp"
             android:textColor="#969696" />
         <TextView
             android:id="@+id/text3"
@@ -39,7 +39,7 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="Setting"
-            android:textSize="15dp"
+            android:textSize="20dp"
             android:textColor="#969696" />
     </LinearLayout>
 
@@ -52,6 +52,6 @@
     <com.example.mymusicplayer.PlayerLayout
         android:id="@+id/player_layout_main_activity"
         android:layout_width="wrap_content"
-        android:layout_height="60dp"/>
+        android:layout_height="65dp"/>
 
 </LinearLayout>
